@@ -52,7 +52,7 @@ impl Node {
 
     fn previous(&self) -> Option<Node> {
         if let Some(parent) = &self.parent() {
-            let id = self.current.id;
+            let _id = self.current.id;
             let siblings = parent.children();
             let index = siblings
                 .iter()
@@ -72,6 +72,7 @@ impl Node {
 
     fn next(&self) -> Option<Node> {
         if let Some(parent) = &self.parent() {
+            let _id = self.current.id;
             let siblings = parent.children();
             let index = siblings
                 .iter()
@@ -137,12 +138,14 @@ impl Node {
 
                 let children = current.children();
                 stack.extend(children);
+                stack.reverse();
             }
 
             last_valid_window
         }
 
         let mut current = self.clone();
+        let _id = current.current.id;
 
         while let Some(parent) = current.parent() {
             let siblings = parent.children();
@@ -176,6 +179,7 @@ impl Node {
         }
 
         let mut current = self.clone();
+        let _id = current.current.id;
 
         while let Some(parent) = current.parent() {
             let siblings = parent.children();
