@@ -73,16 +73,46 @@ impl Node {
     }
 
     fn print(&self) {
-        fn print_tree(node: &Node, depth: usize) {
-            let indent = "+".repeat(depth);
-            println!("{} [{}] {}", indent, node.get_node_type(), node);
+        fn print_tree(node: &Node, depth: usize, is_last: bool) {
+            let indent = if depth == 0 {
+                String::new()
+            } else {
+                let prefix = if is_last { "    " } else { "│   " };
+                format!(
+                    "{}{}",
+                    prefix.repeat(depth - 1),
+                    if is_last { "└── " } else { "├── " }
+                )
+            };
 
-            for child in &node.children() {
-                print_tree(child, depth + 1);
+            let mut node_info = format!(
+                "{}\t{:?} {:?}",
+                node.current.id, node.current.name, node.current.rect
+            );
+            if node.current.focused {
+                node_info = style!("bold,white", "{}", node_info);
+            } else {
+                node_info = style!("dim,white", "{}", node_info);
+            }
+
+            println!("{}[{}] {}", indent, node.get_node_type(), node_info);
+
+            let children = node.children();
+            for (i, child) in children.iter().enumerate() {
+                print_tree(child, depth + 1, i == children.len() - 1);
             }
         }
 
-        print_tree(self, 0);
+        let focused_node = self.get_focused();
+        match focused_node {
+            Some(focused_node) => {
+                let focused_workspace = focused_node.get_parent_workspace();
+                let focused_output = focused_node.get_parent_output();
+            }
+            None => {}
+        }
+
+        print_tree(self, 0, true);
     }
 
     fn get_node_type(&self) -> NodeType {
@@ -187,6 +217,21 @@ impl Node {
         None
     }
 
+    fn get_windows(&self) -> Vec<Node> {
+        let mut windows = Vec::new();
+        fn collect_windows(node: &Node, windows: &mut Vec<Node>) {
+            match node.get_node_type() {
+                NodeType::Window => windows.push(node.clone()),
+                _ => {}
+            }
+            for child in node.children() {
+                collect_windows(&child, windows);
+            }
+        }
+        collect_windows(self, &mut windows);
+        windows
+    }
+
     pub fn previous_window(&self) -> Option<Node> {
         fn find_last_window_in_subtree(node: &Node) -> Option<Node> {
             let mut stack = vec![node.clone()];
@@ -264,16 +309,31 @@ impl Node {
 
 impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let node_type = self.get_node_type();
+        let node_id = self.current.id;
+        let node_name = match self.current.name.as_ref() {
+            Some(name) => String::from(name),
+            None => "".to_string(),
+        };
+        let parent_workspace = match self.get_parent_workspace() {
+            Some(parent) => match parent.current.name {
+                Some(name) => name,
+                None => "".to_string(),
+            },
+            None => "".to_string(),
+        };
+        let parent_output = match self.get_parent_output() {
+            Some(parent) => match parent.current.name {
+                Some(name) => name,
+                None => "".to_string(),
+            },
+            None => "".to_string(),
+        };
+
         write!(
             f,
-            "{{\"id\": {}, \"nodetype\": \"{:?}\", \"name\": \"{:?}\", \"focused\": {}, \"rect\": {:?}, \"window\": {:?}, \"parent\": {}}}",
-            self.current.id,
-            self.current.nodetype,
-            self.current.name,
-            self.current.focused,
-            self.current.rect,
-            self.current.window,
-            self.parent.as_ref().map(|p| p.current.id).unwrap_or(0)
+            "[{}] {} \"{}\" {:?} {} {}",
+            node_type, node_id, node_name, self.current.rect, parent_workspace, parent_output
         )
     }
 }
@@ -356,6 +416,13 @@ fn main() {
                     }
                 }
                 "visible" => println!("Listing visible nodes..."),
+                "windows" => {
+                    println!("Listing windows...");
+                    let windows = root_node.get_windows();
+                    for window in windows {
+                        println!("{}", window);
+                    }
+                }
                 _ => {
                     println!("Error: Unknown argument for list command");
                 }
