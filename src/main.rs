@@ -9,6 +9,8 @@ use i3ipc::reply::NodeType as I3NodeType;
 use i3ipc::I3Connection;
 use I3NodeType::{Con as I3Con, Output as I3Output, Workspace as I3Workspace};
 
+mod macros;
+
 macro_rules! dbg_node_opt {
     ($node:expr) => {
         match $node {
@@ -34,11 +36,70 @@ pub struct Node {
     parent: Option<Box<Node>>,
 }
 
+enum NodeType {
+    Root,
+    Output,
+    DockArea,
+    Workspace,
+    Split,
+    FloatingContainer,
+    Window,
+    Unknown,
+}
+
+impl std::fmt::Display for NodeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NodeType::Root => write!(f, "{}", style!("bold,blue", "Root")),
+            NodeType::Output => write!(f, "{}", style!("bold,green", "Output")),
+            NodeType::DockArea => write!(f, "{}", style!("bold,black", "DockArea")),
+            NodeType::Workspace => write!(f, "{}", style!("bold,yellow", "Workspace")),
+            NodeType::Split => write!(f, "{}", style!("bold,magenta", "Split")),
+            NodeType::Window => write!(f, "{}", style!("bold,cyan", "Window")),
+            NodeType::FloatingContainer => {
+                write!(f, "{}", style!("bold,red", "FloatingContainer"))
+            }
+            NodeType::Unknown => write!(f, "{}", style!("bold,white", "Unknown")),
+        }
+    }
+}
+
 impl Node {
     fn new(node: &I3Node, parent: Option<Node>) -> Self {
         Node {
             current: node.clone(),
             parent: parent.map(Box::new),
+        }
+    }
+
+    fn print(&self) {
+        fn print_tree(node: &Node, depth: usize) {
+            let indent = "+".repeat(depth);
+            println!("{} [{}] {}", indent, node.get_node_type(), node);
+
+            for child in &node.children() {
+                print_tree(child, depth + 1);
+            }
+        }
+
+        print_tree(self, 0);
+    }
+
+    fn get_node_type(&self) -> NodeType {
+        match self.current.nodetype {
+            I3NodeType::Root => NodeType::Root,
+            I3NodeType::Output => NodeType::Output,
+            I3NodeType::Workspace => NodeType::Workspace,
+            I3NodeType::Con => {
+                if self.current.window.is_some() {
+                    NodeType::Window
+                } else {
+                    NodeType::Split
+                }
+            }
+            I3NodeType::DockArea => NodeType::DockArea,
+            I3NodeType::FloatingCon => NodeType::FloatingContainer,
+            I3NodeType::Unknown => NodeType::Unknown,
         }
     }
 
@@ -218,6 +279,10 @@ impl fmt::Display for Node {
 }
 
 fn print_usage() {
+    println!(
+        "{} A grid like navigator for i3wm",
+        style!("bold,blue", "i4")
+    );
     println!("Usage: i4 [-d] [-h] [-v] command [args]");
     println!("Options:");
     println!("  -d, --debug       Print debug information");
@@ -235,7 +300,7 @@ fn print_usage() {
 fn main() {
     let mut args = std::env::args().collect::<Vec<_>>();
     let mut debug_mode = false;
-    println!("Arguments: {:?}", args);
+
     if args.len() < 2 || (args.len() == 2 && (args[1] == "-h" || args[1] == "--help")) {
         print_usage();
         return;
@@ -266,7 +331,7 @@ fn main() {
                     if debug_mode {
                         println!("I3 tree: {:#?}", i3tree);
                     } else {
-                        print_i3_tree(&i3tree, 0);
+                        root_node.print();
                     }
                 }
                 "focused" => {
@@ -401,21 +466,5 @@ fn main() {
         _ => {
             println!("Error: Unknown command");
         }
-    }
-}
-
-fn print_i3_tree(node: &I3Node, depth: usize) {
-    let indent = "+".repeat(depth);
-    println!("{}{{\"id\": {}, \"nodetype\": \"{:?}\", \"name\": \"{:?}\", \"focused\": {}, \"rect\": {:?}}}",
-        indent,
-        node.id,
-        node.nodetype,
-        node.name,
-        node.focused,
-        node.rect
-    );
-
-    for child in &node.nodes {
-        print_i3_tree(child, depth + 1);
     }
 }
