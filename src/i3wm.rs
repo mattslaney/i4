@@ -1,6 +1,4 @@
 pub mod i3wm {
-    extern crate i3ipc;
-
     use i3ipc::reply::Node as I3Node;
     /*
     pub struct Node { // is I3Node
@@ -125,7 +123,7 @@ pub mod i3wm {
             None
         }
 
-        //TODO: This should return a vector of Workspace (I3Workspace/I3Node) instances for all workspaces that exist on the output (monitor) provided as a parameter
+        // TODO: This should return a vector of Workspace (I3Workspace/I3Node) instances for all workspaces that exist on the output (monitor) provided as a parameter
         fn get_output_workspaces(&self, output: &I3Output) -> Vec<Workspace> {
             let mut workspaces = Vec::new();
             for workspace in self.workspaces.workspaces.iter() {
@@ -151,19 +149,26 @@ pub mod i3wm {
             workspaces
         }
 
-        //TODO: This should return a vector of Window (I3Node) instances that are currently visible in an i3 tree
+        // TODO: This should return a vector of Window (I3Node) instances that are currently visible in an i3 tree
         fn get_visible_windows(&self, node: Option<I3Node>) -> Vec<Window> {
             let node = node.unwrap_or(self.node.clone());
             let mut windows = Vec::new();
-            fn dfs(node: &I3Node, windows: &mut Vec<Window>) {
-                if node.focused && node.nodetype == I3NodeType::Con && node.window.is_some() {
+            fn dfs(root: &Root, node: &I3Node, windows: &mut Vec<Window>) {
+                if node.nodetype == I3NodeType::Workspace {
+                    for workspace in root.workspaces.workspaces.iter() {
+                        if Some(workspace.name.clone()) == node.name && workspace.visible == false {
+                            return;
+                        }
+                    }
+                }
+                if node.nodetype == I3NodeType::Con && node.window.is_some() {
                     windows.push(Window::new(node.clone()));
                 }
                 for child in &node.nodes {
-                    dfs(child, windows);
+                    dfs(root, child, windows);
                 }
             }
-            dfs(&node, &mut windows);
+            dfs(self, &node, &mut windows);
             windows
         }
 
@@ -187,7 +192,7 @@ pub mod i3wm {
             None
         }
 
-        //TODO: This should return the matching I3Node for the supplied I3Workspace. I3 workspace just contains data about the workspace and not the actual I3Node. Can be linked together by name (e.g. 1, 2, 3, etc.)
+        // TODO: This should return the matching I3Node for the supplied I3Workspace. I3 workspace just contains data about the workspace and not the actual I3Node. Can be linked together by name (e.g. 1, 2, 3, etc.)
         fn get_matching_workspace_node<'a>(
             node: &'a I3Node,
             workspace: &'a I3Workspace,
@@ -386,14 +391,16 @@ pub mod i3wm {
             self.data.visible
         }
 
-        //TODO: Should return the focused window (I3Node) in this workspace
+        // TODO: Should return the focused window (I3Node) in this workspace
         pub fn get_focused_window(&self) -> Option<Window> {
             fn dfs(node: &I3Node) -> Option<Window> {
                 if node.focused && node.nodetype == I3NodeType::Con && node.window.is_some() {
                     return Some(Window::new(node.clone()));
                 }
                 for child in &node.nodes {
-                    return dfs(child);
+                    if let Some(found_window) = dfs(child) {
+                        return Some(found_window);
+                    }
                 }
                 None
             }
