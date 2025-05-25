@@ -1,6 +1,7 @@
 /**
  * i4 - a grid-like navigator for i3wm
  */
+mod i3wm;
 mod logger;
 mod macros;
 
@@ -9,9 +10,10 @@ extern crate i3ipc;
 use core::fmt;
 use i3ipc::reply::Node as I3Node;
 use i3ipc::reply::NodeType as I3NodeType;
+use i3ipc::reply::{Output as I3Output, Outputs as I3Outputs};
+use i3ipc::reply::{Workspace as I3Workspace, Workspaces as I3Workspaces};
 use i3ipc::I3Connection;
 use logger::Logger;
-use I3NodeType::{Con as I3Con, Output as I3Output, Workspace as I3Workspace};
 
 macro_rules! dbg_node_opt {
     ($node:expr) => {
@@ -147,7 +149,7 @@ impl Node {
     }
 
     pub fn get_parent_workspace(&self) -> Option<Node> {
-        if self.current.nodetype == I3Workspace {
+        if self.current.nodetype == I3NodeType::Workspace {
             return Some(self.clone());
         }
 
@@ -159,7 +161,7 @@ impl Node {
     }
 
     fn get_parent_output(&self) -> Option<Node> {
-        if self.current.nodetype == I3Output {
+        if self.current.nodetype == I3NodeType::Output {
             return Some(self.clone());
         }
 
@@ -205,7 +207,7 @@ impl Node {
             let mut last_valid_window = None;
 
             while let Some(current) = stack.pop() {
-                if current.current.nodetype == I3Con && current.current.window.is_some() {
+                if current.current.nodetype == I3NodeType::Con && current.current.window.is_some() {
                     last_valid_window = Some(current.clone());
                 }
 
@@ -240,7 +242,7 @@ impl Node {
             let mut stack = vec![node.clone()];
 
             while let Some(current) = stack.pop() {
-                if current.current.nodetype == I3Con && current.current.window.is_some() {
+                if current.current.nodetype == I3NodeType::Con && current.current.window.is_some() {
                     return Some(current);
                 }
 
@@ -357,104 +359,114 @@ fn main() {
 
     let mut connection = I3Connection::connect().unwrap();
     let i3tree = connection.get_tree().unwrap();
+    let i3workspaces = connection.get_workspaces().unwrap();
+    let i3outputs = connection.get_outputs().unwrap();
+
     let root_node = Node::new(&i3tree, None);
+    //let i3wm = I3WM::new(connection, i3outputs, i3workspaces, root_node);
 
     match args[1].as_str() {
         "list" => {
             if args.len() < 3 {
-                logger.log(format!("Error: Missing argument for list command"));
+                println!("Error: Missing argument for list command");
                 return;
             }
             match args[2].as_str() {
                 "all" => {
-                    logger.log("Listing all nodes...".to_string());
-                    logger.log(format!("{}", root_node.to_string()));
+                    println!("{}", root_node.to_string());
                 }
                 "focused" => {
-                    logger.log(format!("Listing focused node..."));
+                    println!("Listing focused node...");
                     let focused_node = root_node.get_focused();
                     if let Some(focused_node) = &focused_node {
-                        logger.log(format!("Focused node: {}", focused_node));
+                        println!("Focused node: {}", focused_node);
                         let parent_workspace = focused_node.get_parent_workspace();
-                        logger.log(format!(
-                            " | Parent workspace: {}",
-                            dbg_node_opt!(parent_workspace)
-                        ));
+                        println!(" | Parent workspace: {}", dbg_node_opt!(parent_workspace));
                         let parent_output = focused_node.get_parent_output();
-                        logger.log(format!(
-                            " | Parent output: {}",
-                            dbg_node_opt!(parent_output)
-                        ));
-                        logger.log(format!(
+                        println!(" | Parent output: {}", dbg_node_opt!(parent_output));
+                        println!(
                             " | Previous window: {}",
                             dbg_node_opt!(focused_node.previous_window())
-                        ));
-                        logger.log(format!(
+                        );
+                        println!(
                             " | Next node: {}",
                             dbg_node_opt!(focused_node.next_window())
-                        ));
+                        );
+                        logger.log(&format!("{}", focused_node));
                     } else {
-                        logger.log(format!("No node in focus"));
+                        println!("No node in focus");
                     }
                 }
-                "visible" => logger.log(format!("Listing visible nodes...")),
+                "visible" => println!("Listing visible nodes..."),
                 "windows" => {
-                    logger.log(format!("Listing windows..."));
+                    println!("Listing windows...");
                     let windows = root_node.get_windows();
                     for window in windows {
-                        logger.log(format!("{}", window));
+                        println!("{}", window);
                     }
                 }
                 _ => {
-                    logger.log(format!("Error: Unknown argument for list command"));
+                    println!("Error: Unknown argument for list command");
                 }
             }
         }
         "get" => {
             if args.len() < 3 {
-                logger.log(format!("Error: Missing argument for get command"));
+                println!("Error: Missing argument for get command");
                 return;
             }
             let focused_node = root_node.get_focused();
             if let Some(focused_node) = &focused_node {
-                logger.log(format!("Focused node: {}", focused_node));
+                println!("Focused node: {}", focused_node);
                 match args[2].as_str() {
                     "left" => {
-                        logger.log(format!("Getting left node..."));
+                        println!("Getting left node...");
                     }
                     "right" => {
-                        logger.log(format!("Getting right node..."));
+                        println!("Getting right node...");
                     }
                     "up" => {
-                        logger.log(format!("Getting up node..."));
+                        println!("Getting up node...");
                     }
                     "down" => {
-                        logger.log(format!("Getting down node..."));
+                        println!("Getting down node...");
                     }
                     _ => {
-                        logger.log(format!("Error: Unknown argument for get command"));
+                        println!("Error: Unknown argument for get command");
                     }
                 }
             } else {
-                logger.log(format!("No node in focus"));
+                println!("No node in focus");
             }
         }
         "focus" => {
             if args.len() < 3 {
-                logger.log(format!("Error: Missing argument for focus command"));
+                println!("Error: Missing argument for focus command");
                 return;
             }
             let focused_node = root_node.get_focused();
             if let Some(focused_node) = &focused_node {
-                logger.log(format!("Focused node: {}", focused_node));
+                println!("Focused node: {}", focused_node);
                 match args[2].as_str() {
-                    "left" => logger.log(format!("Focusing left...")),
-                    "right" => logger.log(format!("Focusing right...")),
-                    "up" => logger.log(format!("Focusing up...")),
-                    "down" => logger.log(format!("Focusing down...")),
+                    "left" => {
+                        println!("Focusing left...")
+                    }
+                    "right" => {
+                        println!("Focusing right...")
+                    }
+                    "up" => {
+                        println!("Focusing up...")
+                    }
+                    "down" => {
+                        println!("Focusing down...")
+                    }
                     "previous" => {
                         if let Some(previous_node) = focused_node.previous_window() {
-                            logger.log(format!("Previous node: {}", previous_node));
+                            println!("Previous node: {}", previous_node);
+                            logger.log(&format!(
+                                "focus previous from {} to {}",
+                                focused_node.current.id, previous_node.current.id,
+                            ));
                             connection
                                 .run_command(&format!(
                                     "[con_id={}] focus",
@@ -462,42 +474,54 @@ fn main() {
                                 ))
                                 .unwrap();
                         } else {
-                            logger.log(format!("No previous node"));
+                            println!("No previous node");
                         }
                     }
                     "next" => {
                         if let Some(next_node) = focused_node.next_window() {
-                            logger.log(format!("Next node: {}", next_node));
+                            println!("Next node: {}", next_node);
+                            logger.log(&format!(
+                                "focus previous from {} to {}",
+                                focused_node.current.id, next_node.current.id,
+                            ));
                             connection
                                 .run_command(&format!("[con_id={}] focus", next_node.current.id))
                                 .unwrap();
                         } else {
-                            logger.log(format!("No next node"));
+                            println!("No next node");
                         }
                     }
                     _ => {
-                        logger.log(format!("Error: Unknown argument for focus command"));
+                        println!("Error: Unknown argument for focus command");
                     }
                 }
             }
         }
         "move" => {
             if args.len() < 3 {
-                logger.log(format!("Error: Missing argument for move command"));
+                println!("Error: Missing argument for move command");
                 return;
             }
             match args[2].as_str() {
-                "left" => logger.log(format!("Moving left...")),
-                "right" => logger.log(format!("Moving right...")),
-                "up" => logger.log(format!("Moving up...")),
-                "down" => logger.log(format!("Moving down...")),
+                "left" => {
+                    println!("Moving left...")
+                }
+                "right" => {
+                    println!("Moving right...")
+                }
+                "up" => {
+                    println!("Moving up...")
+                }
+                "down" => {
+                    println!("Moving down...")
+                }
                 _ => {
-                    logger.log(format!("Error: Unknown argument for move command"));
+                    println!("Error: Unknown argument for move command");
                 }
             }
         }
         _ => {
-            logger.log(format!("Error: Unknown command"));
+            println!("Error: Unknown command");
         }
     }
 }

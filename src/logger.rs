@@ -46,7 +46,7 @@ impl Logger {
         Logger { file }
     }
 
-    pub fn log(&self, msg: String) {
+    pub fn log(&self, msg: &str) {
         match &self.file {
             Some(file) => {
                 if let Ok(mut file) = file.lock() {
