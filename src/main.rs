@@ -7,6 +7,8 @@ mod macros;
 
 extern crate i3ipc;
 
+use i3wm::i3wm::Direction::{Down, Left, Right, Up};
+use i3wm::i3wm::{Root, Window};
 use logger::Logger;
 
 fn print_usage() {
@@ -20,8 +22,6 @@ fn print_usage() {
     println!("  -h, --help        Print this help message");
     println!("  -v, --version     Print version information");
     println!("Commands:");
-    println!("  list             List nodes");
-    println!("                   [all, focused, visible]");
     println!("  focus            Focus a window");
     println!("                   [left, right, up, down, previous, next]");
     println!("  move             Move a window");
@@ -59,49 +59,10 @@ fn main() {
 
     let logger = Logger::new(logfile);
 
+    let MAX_HORIZONTAL_WORKSPACES = 10;
+    let i3root = Root::new(MAX_HORIZONTAL_WORKSPACES);
+
     match args[1].as_str() {
-        "list" => {
-            if args.len() < 3 {
-                println!("Error: Missing argument for list command");
-                return;
-            }
-            match args[2].as_str() {
-                "all" => {}
-                "focused" => {
-                    println!("Listing focused node...");
-                }
-                "visible" => println!("Listing visible nodes..."),
-                "windows" => {
-                    println!("Listing windows...");
-                }
-                _ => {
-                    println!("Error: Unknown argument for list command");
-                }
-            }
-        }
-        "get" => {
-            if args.len() < 3 {
-                println!("Error: Missing argument for get command");
-                return;
-            }
-            match args[2].as_str() {
-                "left" => {
-                    println!("Getting left node...");
-                }
-                "right" => {
-                    println!("Getting right node...");
-                }
-                "up" => {
-                    println!("Getting up node...");
-                }
-                "down" => {
-                    println!("Getting down node...");
-                }
-                _ => {
-                    println!("Error: Unknown argument for get command");
-                }
-            }
-        }
         "focus" => {
             if args.len() < 3 {
                 println!("Error: Missing argument for focus command");
@@ -109,22 +70,112 @@ fn main() {
             }
             match args[2].as_str() {
                 "left" => {
-                    println!("Focusing left...")
+                    println!("Focusing left...");
+                    if let Some(output) = i3root.get_focused_output() {
+                        if let Some(workspace) = output.get_focused_workspace() {
+                            match workspace.get_adjacent_window(Left) {
+                                Some(window) => i3root.focus_window(window),
+                                None => match output.get_adjacent_workspace(Left) {
+                                    Some(workspace) => i3root.focus_workspace(workspace),
+                                    None => {
+                                        let new_name =
+                                            workspace.data.name.parse::<i32>().unwrap() - 1;
+                                        i3root.create_workspace(format!("{}", new_name))
+                                    }
+                                },
+                            }
+                        }
+                    }
                 }
                 "right" => {
-                    println!("Focusing right...")
+                    println!("Focusing right...");
+                    if let Some(output) = i3root.get_focused_output() {
+                        if let Some(workspace) = output.get_focused_workspace() {
+                            match workspace.get_adjacent_window(Right) {
+                                Some(window) => i3root.focus_window(window),
+                                None => match output.get_adjacent_workspace(Right) {
+                                    Some(workspace) => i3root.focus_workspace(workspace),
+                                    None => {
+                                        let new_name =
+                                            workspace.data.name.parse::<i32>().unwrap() + 1;
+                                        i3root.create_workspace(format!("{}", new_name))
+                                    }
+                                },
+                            }
+                        }
+                    }
                 }
                 "up" => {
-                    println!("Focusing up...")
+                    println!("Focusing up...");
+                    if let Some(output) = i3root.get_focused_output() {
+                        if let Some(workspace) = output.get_focused_workspace() {
+                            match workspace.get_adjacent_window(Up) {
+                                Some(window) => i3root.focus_window(window),
+                                None => match output.get_adjacent_workspace(Up) {
+                                    Some(workspace) => i3root.focus_workspace(workspace),
+                                    None => {
+                                        let new_name = workspace.data.name.parse::<i32>().unwrap()
+                                            - MAX_HORIZONTAL_WORKSPACES;
+                                        i3root.create_workspace(format!("{}", new_name))
+                                    }
+                                },
+                            }
+                        }
+                    }
                 }
                 "down" => {
-                    println!("Focusing down...")
+                    println!("Focusing down...");
+                    if let Some(output) = i3root.get_focused_output() {
+                        if let Some(workspace) = output.get_focused_workspace() {
+                            match workspace.get_adjacent_window(Down) {
+                                Some(window) => i3root.focus_window(window),
+                                None => match output.get_adjacent_workspace(Down) {
+                                    Some(workspace) => i3root.focus_workspace(workspace),
+                                    None => {
+                                        let new_name = workspace.data.name.parse::<i32>().unwrap()
+                                            + MAX_HORIZONTAL_WORKSPACES;
+                                        i3root.create_workspace(format!("{}", new_name))
+                                    }
+                                },
+                            }
+                        }
+                    }
                 }
                 "previous" => {
-                    println!("Focusing previous window...");
+                    println!("Focusing previous...");
+                    if let Some(output) = i3root.get_focused_output() {
+                        if let Some(workspace) = output.get_focused_workspace() {
+                            match workspace.get_previous_window() {
+                                Some(window) => i3root.focus_window(window),
+                                None => match output.get_previous_workspace() {
+                                    Some(workspace) => i3root.focus_workspace(workspace),
+                                    None => {
+                                        let new_name =
+                                            workspace.data.name.parse::<i32>().unwrap() - 1;
+                                        i3root.create_workspace(format!("{}", new_name))
+                                    }
+                                },
+                            }
+                        }
+                    }
                 }
                 "next" => {
-                    println!("Focusing next window...");
+                    println!("Focusing next...");
+                    if let Some(output) = i3root.get_focused_output() {
+                        if let Some(workspace) = output.get_focused_workspace() {
+                            match workspace.get_next_window() {
+                                Some(window) => i3root.focus_window(window),
+                                None => match output.get_next_workspace() {
+                                    Some(workspace) => i3root.focus_workspace(workspace),
+                                    None => {
+                                        let new_name =
+                                            workspace.data.name.parse::<i32>().unwrap() + 1;
+                                        i3root.create_workspace(format!("{}", new_name))
+                                    }
+                                },
+                            }
+                        }
+                    }
                 }
                 _ => {
                     println!("Error: Unknown argument for focus command");
@@ -148,6 +199,12 @@ fn main() {
                 }
                 "down" => {
                     println!("Moving down...")
+                }
+                "previous" => {
+                    println!("Moving previous...");
+                }
+                "next" => {
+                    println!("Moving next...");
                 }
                 _ => {
                     println!("Error: Unknown argument for move command");
