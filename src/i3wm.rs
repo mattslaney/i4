@@ -72,6 +72,17 @@ pub mod i3wm {
         Down,
     }
 
+    impl Direction {
+        fn as_str(&self) -> &str {
+            match self {
+                Direction::Left => "left",
+                Direction::Right => "right",
+                Direction::Up => "up",
+                Direction::Down => "down",
+            }
+        }
+    }
+
     pub struct Root {
         outputs: I3Outputs,
         workspaces: I3Workspaces,
@@ -79,14 +90,66 @@ pub mod i3wm {
         size: i32, // This is the maximum number of horizontal workspaces
     }
 
-    impl Root {
-        pub fn new(size: i32) -> Self {
-            let mut connection = I3Connection::connect().expect("Failed to connect to i3");
-            let outputs = connection.get_outputs().expect("Failed to get outputs");
-            let workspaces = connection
+    pub struct Util {
+        connection: I3Connection,
+    }
+
+    impl Util {
+        pub fn connect() -> Self {
+            Util {
+                connection: I3Connection::connect().expect("Failed to connect to i3"),
+            }
+        }
+
+        pub fn get_root(&mut self, size: i32) -> Root {
+            let outputs = self
+                .connection
+                .get_outputs()
+                .expect("Failed to get outputs");
+            let workspaces = self
+                .connection
                 .get_workspaces()
                 .expect("Failed to get workspaces");
-            let node = connection.get_tree().expect("Failed to get i3 tree");
+            let node = self.connection.get_tree().expect("Failed to get i3 tree");
+            Root::new(outputs, workspaces, node, size)
+        }
+
+        //https://i3wm.org/docs/userguide.html#list_of_commands
+        pub fn focus_window(&mut self, window: Window) {
+            println!("Focus window: {}", window.node.id);
+            self.connection
+                .run_command(&format!("[con_id={}] focus", window.node.id))
+                .expect("Failed to focus window");
+        }
+
+        pub fn focus_workspace(&mut self, workspace: &String) {
+            self.connection
+                .run_command(&format!("workspace {}", workspace))
+                .expect("Failed to focus workspace");
+        }
+
+        pub fn create_workspace(&mut self, name: &String) {
+            println!("Create workspace: {}", name);
+            self.connection
+                .run_command(&format!("workspace {}", name))
+                .expect("Failed to create workspace");
+        }
+
+        pub fn move_window(&mut self, direction: Direction) {
+            self.connection
+                .run_command(&format!("move {}", direction.as_str()))
+                .expect("Failed to move window");
+        }
+
+        pub fn move_window_to_workspace(&mut self, workspace_name: &String) {
+            self.connection
+                .run_command(&format!("move container to workspace {}", workspace_name))
+                .expect("Failed to focus window");
+        }
+    }
+
+    impl Root {
+        pub fn new(outputs: I3Outputs, workspaces: I3Workspaces, node: I3Node, size: i32) -> Self {
             Root {
                 outputs: outputs,
                 workspaces: workspaces,
@@ -95,7 +158,6 @@ pub mod i3wm {
             }
         }
 
-        // TODO: This should return an instance of Output (I3Output/I3Node) for all outputs (monitors) that are active (turned on)
         fn get_active_outputs(&self) -> Vec<Output> {
             let mut outputs = Vec::new();
             for output in self.outputs.outputs.iter() {
@@ -113,7 +175,6 @@ pub mod i3wm {
             outputs
         }
 
-        // TODO: This should return an instance of Output (I3Output/I3Node) output (monitor) which contains the current focused I3Workspace/I3Node
         pub fn get_focused_output(&self) -> Option<Output> {
             for output in self.get_active_outputs() {
                 if output.get_focused_workspace().is_some() {
@@ -123,7 +184,6 @@ pub mod i3wm {
             None
         }
 
-        // TODO: This should return a vector of Workspace (I3Workspace/I3Node) instances for all workspaces that exist on the output (monitor) provided as a parameter
         fn get_output_workspaces(&self, output: &I3Output) -> Vec<Workspace> {
             let mut workspaces = Vec::new();
             for workspace in self.workspaces.workspaces.iter() {
@@ -136,7 +196,6 @@ pub mod i3wm {
             workspaces
         }
 
-        // TODO: This should return a vector of Workspace (I3Workspace/I3Node) instances that are currently visible in an i3 tree
         fn get_visible_workspaces(&self) -> Vec<Workspace> {
             let mut workspaces = Vec::new();
             for workspace in self.workspaces.workspaces.iter() {
@@ -149,7 +208,6 @@ pub mod i3wm {
             workspaces
         }
 
-        // TODO: This should return a vector of Window (I3Node) instances that are currently visible in an i3 tree
         fn get_visible_windows(&self, node: Option<I3Node>) -> Vec<Window> {
             let node = node.unwrap_or(self.node.clone());
             let mut windows = Vec::new();
@@ -172,7 +230,6 @@ pub mod i3wm {
             windows
         }
 
-        // TODO: This should return the matching I3Node for the supplied I3Output. I3 output just contains data about the output (monitor) and not the actual I3Node. Can be linked together by name (e.g. eDP-1, HDMI-1, etc.)
         fn get_matching_output_node<'a>(
             node: &'a I3Node,
             output: &'a I3Output,
@@ -192,7 +249,6 @@ pub mod i3wm {
             None
         }
 
-        // TODO: This should return the matching I3Node for the supplied I3Workspace. I3 workspace just contains data about the workspace and not the actual I3Node. Can be linked together by name (e.g. 1, 2, 3, etc.)
         fn get_matching_workspace_node<'a>(
             node: &'a I3Node,
             workspace: &'a I3Workspace,
@@ -211,45 +267,6 @@ pub mod i3wm {
             }
 
             None
-        }
-
-        //https://i3wm.org/docs/userguide.html#list_of_commands
-        pub fn focus_window(&self, window: Window) {
-            println!("Focus window: {}", window.node.id);
-            let mut connection = I3Connection::connect().expect("Failed to connect to i3");
-            connection
-                .run_command(&format!("[con_id={}] focus", window.node.id))
-                .expect("Failed to focus window");
-        }
-
-        pub fn focus_workspace(&self, workspace: Workspace) {
-            println!("Focus workspace: {}", workspace.data.name);
-            let mut connection = I3Connection::connect().expect("Failed to connect to i3");
-            connection
-                .run_command(&format!("workspace {}", workspace.data.name))
-                .expect("Failed to focus workspace");
-        }
-
-        pub fn create_workspace(&self, name: String) {
-            println!("Create workspace: {}", name);
-            let mut connection = I3Connection::connect().expect("Failed to connect to i3");
-            connection
-                .run_command(&format!("workspace {}", name))
-                .expect("Failed to create workspace");
-        }
-
-        pub fn move_window_to_workspace(&self, window: Window, workspace: Workspace) {
-            println!(
-                "Move window: {} to workspace: {}",
-                window.node.id, workspace.data.name
-            );
-            let mut connection = I3Connection::connect().expect("Failed to connect to i3");
-            connection
-                .run_command(&format!(
-                    "move [con_id={}] to workspace {}",
-                    window.node.id, workspace.data.name
-                ))
-                .expect("Failed to focus window");
         }
     }
 
@@ -275,7 +292,6 @@ pub mod i3wm {
             }
         }
 
-        // TODO: This should return an instance of Workspace (I3Workspace/I3Node) which is currently focused on this output (monitor)
         pub fn get_focused_workspace(&self) -> Option<Workspace> {
             for workspace in self.workspaces.iter() {
                 if workspace.is_focused() {
@@ -285,12 +301,10 @@ pub mod i3wm {
             None
         }
 
-        // TODO: This should return a vector of Workspace (I3Workspace/I3Node) instances that exist on this output (monitor)
         fn get_workspaces(&self) -> Vec<Workspace> {
             self.workspaces.clone()
         }
 
-        // TODO: This should return the previous workspace (I3Workspace/I3Node) on this output (monitor)
         pub fn get_previous_workspace(&self) -> Option<Workspace> {
             if self.get_focused_workspace().is_some() {
                 let workspaces = self.get_workspaces();
@@ -304,7 +318,6 @@ pub mod i3wm {
             None
         }
 
-        // TODO: This should return the next workspace (I3Workspace/I3Node) on this output (monitor)
         pub fn get_next_workspace(&self) -> Option<Workspace> {
             if self.get_focused_workspace().is_some() {
                 let workspaces = self.get_workspaces();
@@ -318,13 +331,11 @@ pub mod i3wm {
             None
         }
 
-        // TODO: This should return the adjacent workspace (I3Workspace/I3Node) in the specified direction (left, right, up, down)
         pub fn get_adjacent_workspace(&self, direction: Direction) -> Option<Workspace> {
             if let Some(current_workspace) = self.get_focused_workspace() {
                 let current_name = current_workspace.data.name.parse::<i32>().unwrap_or(-1);
                 match direction {
                     Direction::Left => {
-                        // TODO: Should find the workspace in self.workspaces with a name -1 more than the current workspace name
                         for workspace in self.workspaces.iter() {
                             if let Ok(name) = workspace.data.name.parse::<i32>() {
                                 if name == current_name - 1 {
@@ -334,7 +345,6 @@ pub mod i3wm {
                         }
                     }
                     Direction::Right => {
-                        // TODO: Should find the workspace in self.workspaces with a name +1 more than the current workspace name
                         for workspace in self.workspaces.iter() {
                             if let Ok(name) = workspace.data.name.parse::<i32>() {
                                 if name == current_name + 1 {
@@ -344,7 +354,6 @@ pub mod i3wm {
                         }
                     }
                     Direction::Up => {
-                        // TODO: Should find the workspace in self.workspaces with a name -100 more than the current workspace name
                         for workspace in self.workspaces.iter() {
                             if let Ok(name) = workspace.data.name.parse::<i32>() {
                                 if name == current_name - self.size as i32 {
@@ -354,7 +363,6 @@ pub mod i3wm {
                         }
                     }
                     Direction::Down => {
-                        // TODO: Should find the workspace in self.workspaces with a name +100 more than the current workspace name
                         for workspace in self.workspaces.iter() {
                             if let Ok(name) = workspace.data.name.parse::<i32>() {
                                 if name == current_name + self.size as i32 {
@@ -391,7 +399,6 @@ pub mod i3wm {
             self.data.visible
         }
 
-        // TODO: Should return the focused window (I3Node) in this workspace
         pub fn get_focused_window(&self) -> Option<Window> {
             fn dfs(node: &I3Node) -> Option<Window> {
                 if node.focused && node.nodetype == I3NodeType::Con && node.window.is_some() {
@@ -407,7 +414,6 @@ pub mod i3wm {
             dfs(self.node)
         }
 
-        // TODO: Should return a vector of all windows (I3Node) in this workspace
         fn get_windows(&self) -> Vec<Window> {
             let mut windows = Vec::new();
             fn dfs(node: &I3Node, windows: &mut Vec<Window>) {
@@ -422,7 +428,6 @@ pub mod i3wm {
             windows
         }
 
-        // TODO: Should return the next window (I3Node) in this workspace
         pub fn get_next_window(&self) -> Option<Window> {
             if let Some(focused_window) = self.get_focused_window() {
                 let windows = self.get_windows();
@@ -438,7 +443,6 @@ pub mod i3wm {
             None
         }
 
-        // TODO: Should return the previous window (I3Node) in this workspace
         pub fn get_previous_window(&self) -> Option<Window> {
             if let Some(focused_window) = self.get_focused_window() {
                 let windows = self.get_windows();
@@ -454,7 +458,6 @@ pub mod i3wm {
             None
         }
 
-        // TODO: Should return the adjacent window (I3Node) in the specified direction (left, right, up, down) based on the window rect (x, y, width, height)
         pub fn get_adjacent_window(&self, direction: Direction) -> Option<Window> {
             if let Some(focused_window) = self.get_focused_window() {
                 let windows = self.get_windows();

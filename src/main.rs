@@ -7,8 +7,11 @@ mod macros;
 
 extern crate i3ipc;
 
+use std::char::MAX;
+
+use i3ipc::reply::Output;
 use i3wm::i3wm::Direction::{Down, Left, Right, Up};
-use i3wm::i3wm::{Root, Window};
+use i3wm::i3wm::{Root, Util, Window};
 use logger::Logger;
 
 fn print_usage() {
@@ -60,7 +63,8 @@ fn main() {
     let logger = Logger::new(logfile);
 
     let MAX_HORIZONTAL_WORKSPACES = 10;
-    let i3root = Root::new(MAX_HORIZONTAL_WORKSPACES);
+    let mut i3 = Util::connect();
+    let i3root = i3.get_root(MAX_HORIZONTAL_WORKSPACES); //Root::new(MAX_HORIZONTAL_WORKSPACES);
 
     match args[1].as_str() {
         "focus" => {
@@ -74,13 +78,15 @@ fn main() {
                     if let Some(output) = i3root.get_focused_output() {
                         if let Some(workspace) = output.get_focused_workspace() {
                             match workspace.get_adjacent_window(Left) {
-                                Some(window) => i3root.focus_window(window),
+                                Some(window) => i3.focus_window(window),
                                 None => match output.get_adjacent_workspace(Left) {
-                                    Some(workspace) => i3root.focus_workspace(workspace),
+                                    Some(workspace) => i3.focus_workspace(&workspace.data.name),
                                     None => {
-                                        let new_name =
-                                            workspace.data.name.parse::<i32>().unwrap() - 1;
-                                        i3root.create_workspace(format!("{}", new_name))
+                                        let new_name = format!(
+                                            "{}",
+                                            workspace.data.name.parse::<i32>().unwrap() - 1
+                                        );
+                                        i3.create_workspace(&new_name)
                                     }
                                 },
                             }
@@ -92,13 +98,15 @@ fn main() {
                     if let Some(output) = i3root.get_focused_output() {
                         if let Some(workspace) = output.get_focused_workspace() {
                             match workspace.get_adjacent_window(Right) {
-                                Some(window) => i3root.focus_window(window),
+                                Some(window) => i3.focus_window(window),
                                 None => match output.get_adjacent_workspace(Right) {
-                                    Some(workspace) => i3root.focus_workspace(workspace),
+                                    Some(workspace) => i3.focus_workspace(&workspace.data.name),
                                     None => {
-                                        let new_name =
-                                            workspace.data.name.parse::<i32>().unwrap() + 1;
-                                        i3root.create_workspace(format!("{}", new_name))
+                                        let new_name = format!(
+                                            "{}",
+                                            workspace.data.name.parse::<i32>().unwrap() + 1
+                                        );
+                                        i3.create_workspace(&new_name)
                                     }
                                 },
                             }
@@ -110,13 +118,16 @@ fn main() {
                     if let Some(output) = i3root.get_focused_output() {
                         if let Some(workspace) = output.get_focused_workspace() {
                             match workspace.get_adjacent_window(Up) {
-                                Some(window) => i3root.focus_window(window),
+                                Some(window) => i3.focus_window(window),
                                 None => match output.get_adjacent_workspace(Up) {
-                                    Some(workspace) => i3root.focus_workspace(workspace),
+                                    Some(workspace) => i3.focus_workspace(&workspace.data.name),
                                     None => {
-                                        let new_name = workspace.data.name.parse::<i32>().unwrap()
-                                            - MAX_HORIZONTAL_WORKSPACES;
-                                        i3root.create_workspace(format!("{}", new_name))
+                                        let new_name = format!(
+                                            "{}",
+                                            workspace.data.name.parse::<i32>().unwrap()
+                                                - MAX_HORIZONTAL_WORKSPACES
+                                        );
+                                        i3.create_workspace(&new_name)
                                     }
                                 },
                             }
@@ -128,13 +139,16 @@ fn main() {
                     if let Some(output) = i3root.get_focused_output() {
                         if let Some(workspace) = output.get_focused_workspace() {
                             match workspace.get_adjacent_window(Down) {
-                                Some(window) => i3root.focus_window(window),
+                                Some(window) => i3.focus_window(window),
                                 None => match output.get_adjacent_workspace(Down) {
-                                    Some(workspace) => i3root.focus_workspace(workspace),
+                                    Some(workspace) => i3.focus_workspace(&workspace.data.name),
                                     None => {
-                                        let new_name = workspace.data.name.parse::<i32>().unwrap()
-                                            + MAX_HORIZONTAL_WORKSPACES;
-                                        i3root.create_workspace(format!("{}", new_name))
+                                        let new_name = format!(
+                                            "{}",
+                                            workspace.data.name.parse::<i32>().unwrap()
+                                                + MAX_HORIZONTAL_WORKSPACES
+                                        );
+                                        i3.create_workspace(&new_name)
                                     }
                                 },
                             }
@@ -146,13 +160,15 @@ fn main() {
                     if let Some(output) = i3root.get_focused_output() {
                         if let Some(workspace) = output.get_focused_workspace() {
                             match workspace.get_previous_window() {
-                                Some(window) => i3root.focus_window(window),
+                                Some(window) => i3.focus_window(window),
                                 None => match output.get_previous_workspace() {
-                                    Some(workspace) => i3root.focus_workspace(workspace),
+                                    Some(workspace) => i3.focus_workspace(&workspace.data.name),
                                     None => {
-                                        let new_name =
-                                            workspace.data.name.parse::<i32>().unwrap() - 1;
-                                        i3root.create_workspace(format!("{}", new_name))
+                                        let new_name = format!(
+                                            "{}",
+                                            workspace.data.name.parse::<i32>().unwrap() - 1
+                                        );
+                                        i3.create_workspace(&new_name)
                                     }
                                 },
                             }
@@ -164,13 +180,15 @@ fn main() {
                     if let Some(output) = i3root.get_focused_output() {
                         if let Some(workspace) = output.get_focused_workspace() {
                             match workspace.get_next_window() {
-                                Some(window) => i3root.focus_window(window),
+                                Some(window) => i3.focus_window(window),
                                 None => match output.get_next_workspace() {
-                                    Some(workspace) => i3root.focus_workspace(workspace),
+                                    Some(workspace) => i3.focus_workspace(&workspace.data.name),
                                     None => {
-                                        let new_name =
-                                            workspace.data.name.parse::<i32>().unwrap() + 1;
-                                        i3root.create_workspace(format!("{}", new_name))
+                                        let new_name = format!(
+                                            "{}",
+                                            workspace.data.name.parse::<i32>().unwrap() + 1
+                                        );
+                                        i3.create_workspace(&new_name)
                                     }
                                 },
                             }
@@ -189,22 +207,147 @@ fn main() {
             }
             match args[2].as_str() {
                 "left" => {
-                    println!("Moving left...")
+                    println!("Moving left...");
+                    if let Some(output) = i3root.get_focused_output() {
+                        if let Some(workspace) = output.get_focused_workspace() {
+                            match workspace.get_adjacent_window(Left) {
+                                Some(_) => i3.move_window(Left),
+                                None => {
+                                    let new_name = format!(
+                                        "{}",
+                                        workspace.data.name.parse::<i32>().unwrap() - 1
+                                    );
+                                    i3.move_window_to_workspace(
+                                        match output.get_adjacent_workspace(Down) {
+                                            Some(workspace) => &workspace.data.name,
+                                            None => &new_name,
+                                        },
+                                    );
+                                    i3.focus_workspace(&new_name);
+                                }
+                            }
+                        }
+                    }
                 }
                 "right" => {
-                    println!("Moving right...")
+                    println!("Moving right...");
+                    if let Some(output) = i3root.get_focused_output() {
+                        if let Some(workspace) = output.get_focused_workspace() {
+                            match workspace.get_adjacent_window(Right) {
+                                Some(_) => i3.move_window(Right),
+                                None => {
+                                    let new_name = format!(
+                                        "{}",
+                                        workspace.data.name.parse::<i32>().unwrap() + 1
+                                    );
+                                    i3.move_window_to_workspace(
+                                        match output.get_adjacent_workspace(Down) {
+                                            Some(workspace) => &workspace.data.name,
+                                            None => &new_name,
+                                        },
+                                    );
+                                    i3.focus_workspace(&new_name);
+                                }
+                            }
+                        }
+                    }
                 }
                 "up" => {
-                    println!("Moving up...")
+                    println!("Moving up...");
+                    if let Some(output) = i3root.get_focused_output() {
+                        if let Some(workspace) = output.get_focused_workspace() {
+                            match workspace.get_adjacent_window(Up) {
+                                Some(_) => i3.move_window(Up),
+                                None => {
+                                    let new_name = format!(
+                                        "{}",
+                                        workspace.data.name.parse::<i32>().unwrap()
+                                            + MAX_HORIZONTAL_WORKSPACES
+                                    );
+                                    i3.move_window_to_workspace(
+                                        match output.get_adjacent_workspace(Down) {
+                                            Some(workspace) => &workspace.data.name,
+                                            None => &new_name,
+                                        },
+                                    );
+                                    i3.focus_workspace(&new_name);
+                                }
+                            }
+                        }
+                    }
                 }
                 "down" => {
-                    println!("Moving down...")
+                    println!("Moving down...");
+                    if let Some(output) = i3root.get_focused_output() {
+                        if let Some(workspace) = output.get_focused_workspace() {
+                            match workspace.get_adjacent_window(Down) {
+                                Some(_) => i3.move_window(Down),
+                                None => {
+                                    let new_name = format!(
+                                        "{}",
+                                        workspace.data.name.parse::<i32>().unwrap()
+                                            + MAX_HORIZONTAL_WORKSPACES
+                                    );
+                                    i3.move_window_to_workspace(
+                                        match output.get_adjacent_workspace(Down) {
+                                            Some(workspace) => &workspace.data.name,
+                                            None => {
+                                                //i3.create_workspace(&new_name);
+                                                &new_name
+                                            }
+                                        },
+                                    );
+                                    i3.focus_workspace(&new_name);
+                                }
+                            }
+                        }
+                    }
                 }
                 "previous" => {
                     println!("Moving previous...");
+                    if let Some(output) = i3root.get_focused_output() {
+                        if let Some(workspace) = output.get_focused_workspace() {
+                            match workspace.get_adjacent_window(Left) {
+                                Some(_) => i3.move_window(Left),
+                                None => {
+                                    let new_name = format!(
+                                        "{}",
+                                        workspace.data.name.parse::<i32>().unwrap() - 1
+                                    );
+                                    i3.move_window_to_workspace(
+                                        match output.get_previous_workspace() {
+                                            Some(workspace) => &workspace.data.name,
+                                            None => &new_name,
+                                        },
+                                    );
+                                    i3.focus_workspace(&new_name);
+                                }
+                            }
+                        }
+                    }
                 }
                 "next" => {
                     println!("Moving next...");
+                    if let Some(output) = i3root.get_focused_output() {
+                        if let Some(workspace) = output.get_focused_workspace() {
+                            match workspace.get_adjacent_window(Left) {
+                                Some(_) => i3.move_window(Left),
+                                None => {
+                                    let new_name = format!(
+                                        "{}",
+                                        workspace.data.name.parse::<i32>().unwrap() - 1
+                                    );
+                                    i3.move_window_to_workspace(
+                                        match output.get_next_workspace() {
+                                            Some(workspace) => &workspace.data.name,
+                                            None => &new_name,
+                                        },
+                                    );
+                                    i3.focus_workspace(&new_name);
+                                }
+                            }
+                        }
+                    }
                 }
                 _ => {
                     println!("Error: Unknown argument for move command");
