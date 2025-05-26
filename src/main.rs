@@ -67,6 +67,45 @@ fn main() {
     let i3root = i3.get_root(MAX_HORIZONTAL_WORKSPACES); //Root::new(MAX_HORIZONTAL_WORKSPACES);
 
     match args[1].as_str() {
+        "get" => {
+            if args.len() < 3 {
+                println!("Error: Missing argument for get command");
+                return;
+            }
+            match args[2].as_str() {
+                "state" => {
+                    let output = i3root.get_focused_output().unwrap();
+                    let workspace = output.get_focused_workspace().unwrap();
+                    let workspace_number = workspace.data.name.parse::<i32>().unwrap();
+                    let vertical_space = workspace_number / MAX_HORIZONTAL_WORKSPACES;
+                    let horizontal_space = workspace_number % MAX_HORIZONTAL_WORKSPACES;
+                    match workspace.get_focused_window() {
+                        Some(window) => {
+                            println!(
+                                "{{\"output\":\"{}\", \"workspace\":{{\"vertical\":\"{}\", \"horizontal\":\"{}\", \"number\":\"{}\"}}, \"window\":\"{}\"}}",
+                                output.data.name,
+                                vertical_space,
+                                horizontal_space,
+                                workspace.data.name,
+                                window.node.name.unwrap_or("".to_string())
+                            );
+                        }
+                        None => {
+                            println!(
+                                "{{\"output\":\"{}\", \"workspace\":{{\"vertical\":\"{}\", \"horizontal\":\"{}\", \"number\":\"{}\"}}, \"window\":\"\"}}",
+                                output.data.name,
+                                vertical_space,
+                                horizontal_space,
+                                workspace.data.name,
+                            );
+                        }
+                    }
+                }
+                _ => {
+                    println!("Error: Unknown argument for get command");
+                }
+            }
+        }
         "focus" => {
             if args.len() < 3 {
                 println!("Error: Missing argument for focus command");
@@ -291,10 +330,7 @@ fn main() {
                                     i3.move_window_to_workspace(
                                         match output.get_adjacent_workspace(Down) {
                                             Some(workspace) => &workspace.data.name,
-                                            None => {
-                                                //i3.create_workspace(&new_name);
-                                                &new_name
-                                            }
+                                            None => &new_name,
                                         },
                                     );
                                     i3.focus_workspace(&new_name);
