@@ -6,12 +6,13 @@ use std::{
     collections::HashMap,
     fs::{self, File},
     path::PathBuf,
+    str::FromStr,
 };
 
 use i3ipc::reply;
 use serde_json as json;
 
-use crate::i3wm::I3ConnectionTrait;
+use crate::i4::I3ConnectionTrait;
 
 fn build_rect(jrect: &json::Value) -> (i32, i32, i32, i32) {
     let x = jrect.get("x").unwrap().as_i64().unwrap() as i32;
@@ -145,7 +146,7 @@ impl I3ConnectionTrait for MockI3Connection {
     type ResultError = std::io::Error;
     type EstablishError = std::io::Error;
 
-    fn connect(path: Option<std::path::PathBuf>) -> Result<Self, Self::EstablishError> {
+    fn connect(path: Option<String>) -> Result<Self, Self::EstablishError> {
         match path {
             Some(p) => MockI3Connection::connect(p),
             None => Err(std::io::Error::new(
@@ -175,9 +176,11 @@ impl I3ConnectionTrait for MockI3Connection {
 impl MockI3Connection {
     /// Rather than establishing a real IPC connection, we'll expect a path to a directory
     /// that contains mock data json files for testing purposes.
-    pub fn connect(path: PathBuf) -> Result<MockI3Connection, std::io::Error> {
+    pub fn connect(path: String) -> Result<MockI3Connection, std::io::Error> {
         match fs::read_dir(&path) {
-            Ok(_) => Ok(MockI3Connection { path: path }),
+            Ok(_) => Ok(MockI3Connection {
+                path: std::path::PathBuf::from(path),
+            }),
             Err(e) => Err(e),
         }
     }

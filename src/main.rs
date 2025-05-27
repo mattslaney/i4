@@ -1,17 +1,14 @@
 /**
  * i4 - a grid-like navigator for i3wm
  */
-mod i3wm;
+mod i4;
 mod logger;
 mod macros;
 
 extern crate i3ipc;
 
-use std::char::MAX;
-
-use i3ipc::reply::Output;
-use i3wm::Direction::{Down, Left, Right, Up};
-use i3wm::{Root, Util, Window};
+use i4::Direction::{Down, Left, Right, Up};
+use i4::{Root, Window, I4};
 use logger::Logger;
 
 fn print_usage() {
@@ -31,46 +28,9 @@ fn print_usage() {
     println!("                   [left, right, up, down, previous, next]");
 }
 
-fn main() {
-    let mut args = std::env::args().collect::<Vec<_>>();
-    let mut debug_mode = false;
-    let mut logfile: Option<String> = None;
-
-    if args.len() < 2 || (args.len() == 2 && (args[1] == "-h" || args[1] == "--help")) {
-        print_usage();
-        return;
-    }
-
-    if args[1] == "-v" || args[1] == "--version" {
-        println!("i4 version 0.1.0");
-        return;
-    }
-
-    if args[1] == "-d" || args[1] == "--debug" {
-        args.remove(1);
-        debug_mode = true;
-        println!("Enter arguments for i4:");
-        let mut input: String = "".to_string();
-        std::io::stdin()
-            .read_line(&mut input)
-            .expect("Failed to read line");
-        args.extend(input.trim().split_whitespace().map(String::from));
-        println!("Debugging with arguments: {:?}", args);
-    }
-
-    // let current_executable = std::env::current_exe().unwrap();
-    // let executable_path = current_executable.parent().unwrap();
-    // let executable_path_str = executable_path.to_str().unwrap();
-    // if executable_path_str == "/usr/local/bin" {
-    //     logfile = Some("/var/log/i4.log".to_string());
-    // } else {
-    //     logfile = Some(format!("{}/i4.log", executable_path_str));
-    // }
-    // let logger = Logger::new(logfile);
-    // logfile = Some("/var/log/i4.log".to_string());
-
+fn process_request(args: Vec<String>) {
     let MAX_HORIZONTAL_WORKSPACES = 10;
-    let mut i3: Util<i3ipc::I3Connection> = Util::connect(None);
+    let mut i3: I4<i3ipc::I3Connection> = I4::connect(None, MAX_HORIZONTAL_WORKSPACES);
     let i3root = i3.get_root(MAX_HORIZONTAL_WORKSPACES); //Root::new(MAX_HORIZONTAL_WORKSPACES);
 
     match args[1].as_str() {
@@ -81,32 +41,7 @@ fn main() {
             }
             match args[2].as_str() {
                 "state" => {
-                    let output = i3root.get_focused_output().unwrap();
-                    let workspace = output.get_focused_workspace().unwrap();
-                    let workspace_number = workspace.data.name.parse::<i32>().unwrap();
-                    let vertical_space = workspace_number / MAX_HORIZONTAL_WORKSPACES;
-                    let horizontal_space = workspace_number % MAX_HORIZONTAL_WORKSPACES;
-                    match workspace.get_focused_window() {
-                        Some(window) => {
-                            println!(
-                                "{{\"output\":\"{}\", \"workspace\":{{\"vertical\":\"{}\", \"horizontal\":\"{}\", \"number\":\"{}\"}}, \"window\":\"{}\"}}",
-                                output.data.name,
-                                vertical_space,
-                                horizontal_space,
-                                workspace.data.name,
-                                window.node.name.unwrap_or("".to_string())
-                            );
-                        }
-                        None => {
-                            println!(
-                                "{{\"output\":\"{}\", \"workspace\":{{\"vertical\":\"{}\", \"horizontal\":\"{}\", \"number\":\"{}\"}}, \"window\":\"\"}}",
-                                output.data.name,
-                                vertical_space,
-                                horizontal_space,
-                                workspace.data.name,
-                            );
-                        }
-                    }
+                    println!("{}", i3.get_state());
                 }
                 _ => {
                     println!("Error: Unknown argument for get command");
@@ -403,20 +338,54 @@ fn main() {
     }
 }
 
+fn main() {
+    let mut args = std::env::args().collect::<Vec<_>>();
+    let mut debug_mode = false;
+    let mut logfile: Option<String> = None;
+
+    if args.len() < 2 || (args.len() == 2 && (args[1] == "-h" || args[1] == "--help")) {
+        print_usage();
+        return;
+    }
+
+    if args[1] == "-v" || args[1] == "--version" {
+        println!("i4 version 0.1.0");
+        return;
+    }
+
+    if args[1] == "-d" || args[1] == "--debug" {
+        args.remove(1);
+        debug_mode = true;
+        println!("Enter arguments for i4:");
+        let mut input: String = "".to_string();
+        std::io::stdin()
+            .read_line(&mut input)
+            .expect("Failed to read line");
+        args.extend(input.trim().split_whitespace().map(String::from));
+        println!("Debugging with arguments: {:?}", args);
+    }
+
+    // let current_executable = std::env::current_exe().unwrap();
+    // let executable_path = current_executable.parent().unwrap();
+    // let executable_path_str = executable_path.to_str().unwrap();
+    // if executable_path_str == "/usr/local/bin" {
+    //     logfile = Some("/var/log/i4.log".to_string());
+    // } else {
+    //     logfile = Some(format!("{}/i4.log", executable_path_str));
+    // }
+    // let logger = Logger::new(logfile);
+    // logfile = Some("/var/log/i4.log".to_string());
+    process_request(args);
+}
+
 #[cfg(test)]
 mod tests {
     pub mod mock_i3ipc;
-
     use super::*;
-    use i3ipc::reply;
-    use i3ipc::reply::NodeType;
 
     #[test]
-    fn i4_focus_left_focuses_left_window() {}
-
-    #[test]
-    fn i4_focus_left_focuses_right_window_of_left_workspace() {}
-
-    #[test]
-    fn i4_focus_left_focuses_left_workspace() {}
+    fn get_state_request_prints_to_stdout() {
+        let args = vec!["i4".to_string(), "get".to_string(), "state".to_string()];
+        process_request(args);
+    }
 }

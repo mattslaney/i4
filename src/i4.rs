@@ -95,7 +95,7 @@ pub trait I3ConnectionTrait {
     type ResultError: std::fmt::Debug;
     type EstablishError: std::fmt::Debug;
 
-    fn connect(path: Option<std::path::PathBuf>) -> Result<Self, Self::EstablishError>
+    fn connect(path: Option<String>) -> Result<Self, Self::EstablishError>
     where
         Self: Sized;
     fn run_command(&mut self, command: &str) -> Result<Self::ResultSuccess, Self::ResultError>;
@@ -109,7 +109,7 @@ impl I3ConnectionTrait for I3Connection {
     type ResultError = i3ipc::MessageError;
     type EstablishError = i3ipc::EstablishError;
 
-    fn connect(path: Option<std::path::PathBuf>) -> Result<Self, Self::EstablishError> {
+    fn connect(path: Option<String>) -> Result<Self, Self::EstablishError> {
         I3Connection::connect()
     }
 
@@ -130,19 +130,28 @@ impl I3ConnectionTrait for I3Connection {
     }
 }
 
-pub struct Util<C: I3ConnectionTrait> {
+pub struct I4<C: I3ConnectionTrait> {
     connection: C,
+    size: i32, // This is the maximum number of horizontal workspaces
+    i3root: Root,
 }
 
-impl<C: I3ConnectionTrait> Util<C> {
-    pub fn connect(path: Option<std::path::PathBuf>) -> Self {
-        match path {
-            Some(path) => Util {
-                connection: C::connect(Some(path)).expect("Failed to connect to i3"),
-            },
-            None => Util {
-                connection: C::connect(None).expect("Failed to connect to i3"),
-            },
+impl<C: I3ConnectionTrait> I4<C> {
+    pub fn connect(path: Option<String>, size: i32) -> Self {
+        let mut connection = match path {
+            Some(path) => C::connect(Some(path)).expect("Failed to connect to i3"),
+            None => C::connect(None).expect("Failed to connect to i3"),
+        };
+        let outputs = connection.get_outputs().expect("Failed to get outputs");
+        let workspaces = connection
+            .get_workspaces()
+            .expect("Failed to get workspaces");
+        let root_node = connection.get_tree().expect("Failed to get i3 tree");
+        let i3root = Root::new(outputs, workspaces, root_node, 10); // Assuming a default size of 10 for horizontal workspaces
+        I4 {
+            connection,
+            size,
+            i3root,
         }
     }
 
@@ -190,6 +199,35 @@ impl<C: I3ConnectionTrait> Util<C> {
         self.connection
             .run_command(&format!("move container to workspace {}", workspace_name))
             .expect("Failed to focus window");
+    }
+
+    pub fn get_state(&mut self) -> String {
+        let output = self.i3root.get_focused_output().unwrap();
+        let workspace = output.get_focused_workspace().unwrap();
+        let workspace_number = workspace.data.name.parse::<i32>().unwrap();
+        let vertical_space = workspace_number / self.size;
+        let horizontal_space = workspace_number % self.size;
+        match workspace.get_focused_window() {
+            Some(window) => {
+                format!(
+                    "{{\"output\":\"{}\", \"workspace\":{{\"vertical\":\"{}\", \"horizontal\":\"{}\", \"number\":\"{}\"}}, \"window\":\"{}\"}}",
+                    output.data.name,
+                    vertical_space,
+                    horizontal_space,
+                    workspace.data.name,
+                    window.node.name.unwrap_or("".to_string())
+                )
+            }
+            None => {
+                format!(
+                    "{{\"output\":\"{}\", \"workspace\":{{\"vertical\":\"{}\", \"horizontal\":\"{}\", \"number\":\"{}\"}}, \"window\":\"\"}}",
+                    output.data.name,
+                    vertical_space,
+                    horizontal_space,
+                    workspace.data.name,
+                )
+            }
+        }
     }
 }
 
@@ -561,15 +599,18 @@ mod tests {
     use mock_i3ipc::MockI3Connection;
 
     #[test]
-    fn get_active_outputs_returns_all_active_outputs() {
-        let testfiles = std::path::PathBuf::from_str("src/tests/scenarios/basic")
-            .expect("Failed to parse path");
-        let mut i3 = MockI3Connection::connect(testfiles).expect("Failed to connect to mock i3");
-        let mock_outputs = i3.get_outputs().expect("Failed to get mock outputs");
-        let mock_workspaces = i3.get_workspaces().expect("Failed to get mock workspaces");
-        let mock_tree = i3.get_tree().expect("Failed to get mock tree");
+    fn get_state_returns_correct_state() {
+        let mut i4: I4<MockI3Connection> =
+            I4::connect(Some("src/tests/scenarios/basic".to_string()), 10);
+        let state = i4.get_state();
+        println!("State: {}", state);
+    }
 
-        let root_node = Root::new(mock_outputs, mock_workspaces, mock_tree, 10);
+    #[test]
+    fn get_active_outputs_returns_all_active_outputs() {
+        let mut i4: I4<MockI3Connection> =
+            I4::connect(Some("src/tests/scenarios/basic".to_string()), 10);
+        let root_node = i4.get_root(10);
 
         let active_outputs: Vec<Output> = root_node.get_active_outputs();
         assert_eq!(active_outputs.len(), 2);
