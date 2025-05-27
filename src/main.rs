@@ -33,7 +33,7 @@ fn print_usage() {
 
 fn main() {
     let mut args = std::env::args().collect::<Vec<_>>();
-    // let mut debug_mode = false;
+    let mut debug_mode = false;
     let mut logfile: Option<String> = None;
 
     if args.len() < 2 || (args.len() == 2 && (args[1] == "-h" || args[1] == "--help")) {
@@ -48,19 +48,26 @@ fn main() {
 
     if args[1] == "-d" || args[1] == "--debug" {
         args.remove(1);
-        // debug_mode = true;
-        // let current_executable = std::env::current_exe().unwrap();
-        // let executable_path = current_executable.parent().unwrap();
-        // let executable_path_str = executable_path.to_str().unwrap();
-        // if executable_path_str == "/usr/local/bin" {
-        //     logfile = Some("/var/log/i4.log".to_string());
-        // } else {
-        //     logfile = Some(format!("{}/i4.log", executable_path_str));
-        // }
-        logfile = Some("/var/log/i4.log".to_string());
+        debug_mode = true;
+        println!("Enter arguments for i4:");
+        let mut input: String = "".to_string();
+        std::io::stdin()
+            .read_line(&mut input)
+            .expect("Failed to read line");
+        args.extend(input.trim().split_whitespace().map(String::from));
+        println!("Debugging with arguments: {:?}", args);
     }
 
-    let logger = Logger::new(logfile);
+    // let current_executable = std::env::current_exe().unwrap();
+    // let executable_path = current_executable.parent().unwrap();
+    // let executable_path_str = executable_path.to_str().unwrap();
+    // if executable_path_str == "/usr/local/bin" {
+    //     logfile = Some("/var/log/i4.log".to_string());
+    // } else {
+    //     logfile = Some(format!("{}/i4.log", executable_path_str));
+    // }
+    // let logger = Logger::new(logfile);
+    // logfile = Some("/var/log/i4.log".to_string());
 
     let MAX_HORIZONTAL_WORKSPACES = 10;
     let mut i3 = Util::connect();
