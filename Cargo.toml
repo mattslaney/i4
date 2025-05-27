@@ -6,3 +6,5 @@ edition = "2021"
 [dependencies]
 clap = "4.5.38"
 i3ipc = "0.10.1"
+serde = "1.0.219"
+serde_json = "1.0.140"

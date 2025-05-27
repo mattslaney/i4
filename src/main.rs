@@ -10,8 +10,8 @@ extern crate i3ipc;
 use std::char::MAX;
 
 use i3ipc::reply::Output;
-use i3wm::i3wm::Direction::{Down, Left, Right, Up};
-use i3wm::i3wm::{Root, Util, Window};
+use i3wm::Direction::{Down, Left, Right, Up};
+use i3wm::{Root, Util, Window};
 use logger::Logger;
 
 fn print_usage() {
@@ -401,4 +401,22 @@ fn main() {
             println!("Error: Unknown command");
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    pub mod mock_i3ipc;
+
+    use super::*;
+    use i3ipc::reply;
+    use i3ipc::reply::NodeType;
+
+    #[test]
+    fn i4_focus_left_focuses_left_window() {}
+
+    #[test]
+    fn i4_focus_left_focuses_right_window_of_left_workspace() {}
+
+    #[test]
+    fn i4_focus_left_focuses_left_workspace() {}
 }

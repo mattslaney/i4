@@ -1,0 +1,62 @@
+[
+    {
+        "id": 110203117448976,
+        "num": 2,
+        "name": "2",
+        "visible": false,
+        "focused": false,
+        "rect": {
+            "x": 0,
+            "y": 1200,
+            "width": 3840,
+            "height": 2141
+        },
+        "output": "DP-1-0",
+        "urgent": false
+    },
+    {
+        "id": 110203117562560,
+        "num": 3,
+        "name": "3",
+        "visible": false,
+        "focused": false,
+        "rect": {
+            "x": 0,
+            "y": 1200,
+            "width": 3840,
+            "height": 2141
+        },
+        "output": "DP-1-0",
+        "urgent": false
+    },
+    {
+        "id": 110203117323984,
+        "num": 4,
+        "name": "4",
+        "visible": true,
+        "focused": true,
+        "rect": {
+            "x": 0,
+            "y": 1200,
+            "width": 3840,
+            "height": 2141
+        },
+        "output": "DP-1-0",
+        "urgent": false
+    },
+    {
+        "id": 110203117336528,
+        "num": 1,
+        "name": "1",
+        "visible": true,
+        "focused": false,
+        "rect": {
+            "x": 1200,
+            "y": 0,
+            "width": 1920,
+            "height": 1181
+        },
+        "output": "eDP-1",
+        "urgent": false
+    }
+]
