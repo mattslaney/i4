@@ -11,6 +11,8 @@ use std::{
 use i3ipc::reply;
 use serde_json as json;
 
+use crate::i3wm::I3ConnectionTrait;
+
 fn build_rect(jrect: &json::Value) -> (i32, i32, i32, i32) {
     let x = jrect.get("x").unwrap().as_i64().unwrap() as i32;
     let y = jrect.get("y").unwrap().as_i64().unwrap() as i32;
@@ -136,6 +138,38 @@ fn build_tree(val: &json::Value) -> reply::Node {
 pub struct MockI3Connection {
     // stream: UnixStream,
     path: PathBuf,
+}
+
+impl I3ConnectionTrait for MockI3Connection {
+    type ResultSuccess = String;
+    type ResultError = std::io::Error;
+    type EstablishError = std::io::Error;
+
+    fn connect(path: Option<std::path::PathBuf>) -> Result<Self, Self::EstablishError> {
+        match path {
+            Some(p) => MockI3Connection::connect(p),
+            None => Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Path to mock data directory is required",
+            )),
+        }
+    }
+
+    fn run_command(&mut self, command: &str) -> Result<Self::ResultSuccess, Self::ResultError> {
+        self.run_command(command)
+    }
+
+    fn get_outputs(&mut self) -> Result<i3ipc::reply::Outputs, Self::ResultError> {
+        self.get_outputs()
+    }
+
+    fn get_workspaces(&mut self) -> Result<i3ipc::reply::Workspaces, Self::ResultError> {
+        self.get_workspaces()
+    }
+
+    fn get_tree(&mut self) -> Result<i3ipc::reply::Node, Self::ResultError> {
+        self.get_tree()
+    }
 }
 
 impl MockI3Connection {

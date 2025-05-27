@@ -70,7 +70,7 @@ fn main() {
     // logfile = Some("/var/log/i4.log".to_string());
 
     let MAX_HORIZONTAL_WORKSPACES = 10;
-    let mut i3 = Util::connect();
+    let mut i3: Util<i3ipc::I3Connection> = Util::connect(None);
     let i3root = i3.get_root(MAX_HORIZONTAL_WORKSPACES); //Root::new(MAX_HORIZONTAL_WORKSPACES);
 
     match args[1].as_str() {

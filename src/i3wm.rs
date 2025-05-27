@@ -90,14 +90,59 @@ pub struct Root {
     size: i32, // This is the maximum number of horizontal workspaces
 }
 
-pub struct Util {
-    connection: I3Connection,
+pub trait I3ConnectionTrait {
+    type ResultSuccess;
+    type ResultError: std::fmt::Debug;
+    type EstablishError: std::fmt::Debug;
+
+    fn connect(path: Option<std::path::PathBuf>) -> Result<Self, Self::EstablishError>
+    where
+        Self: Sized;
+    fn run_command(&mut self, command: &str) -> Result<Self::ResultSuccess, Self::ResultError>;
+    fn get_outputs(&mut self) -> Result<i3ipc::reply::Outputs, Self::ResultError>;
+    fn get_workspaces(&mut self) -> Result<i3ipc::reply::Workspaces, Self::ResultError>;
+    fn get_tree(&mut self) -> Result<i3ipc::reply::Node, Self::ResultError>;
 }
 
-impl Util {
-    pub fn connect() -> Self {
-        Util {
-            connection: I3Connection::connect().expect("Failed to connect to i3"),
+impl I3ConnectionTrait for I3Connection {
+    type ResultSuccess = i3ipc::reply::Command;
+    type ResultError = i3ipc::MessageError;
+    type EstablishError = i3ipc::EstablishError;
+
+    fn connect(path: Option<std::path::PathBuf>) -> Result<Self, Self::EstablishError> {
+        I3Connection::connect()
+    }
+
+    fn run_command(&mut self, command: &str) -> Result<Self::ResultSuccess, Self::ResultError> {
+        self.run_command(command)
+    }
+
+    fn get_outputs(&mut self) -> Result<i3ipc::reply::Outputs, Self::ResultError> {
+        self.get_outputs()
+    }
+
+    fn get_workspaces(&mut self) -> Result<i3ipc::reply::Workspaces, Self::ResultError> {
+        self.get_workspaces()
+    }
+
+    fn get_tree(&mut self) -> Result<i3ipc::reply::Node, Self::ResultError> {
+        self.get_tree()
+    }
+}
+
+pub struct Util<C: I3ConnectionTrait> {
+    connection: C,
+}
+
+impl<C: I3ConnectionTrait> Util<C> {
+    pub fn connect(path: Option<std::path::PathBuf>) -> Self {
+        match path {
+            Some(path) => Util {
+                connection: C::connect(Some(path)).expect("Failed to connect to i3"),
+            },
+            None => Util {
+                connection: C::connect(None).expect("Failed to connect to i3"),
+            },
         }
     }
 
