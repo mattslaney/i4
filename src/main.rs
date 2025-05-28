@@ -11,6 +11,8 @@ use i4::Direction::{Down, Left, Right, Up};
 use i4::{Root, Window, I4};
 use logger::Logger;
 
+const MAX_HORIZONTAL_WORKSPACES: i32 = 10;
+
 fn print_usage() {
     println!(
         "{} A grid like navigator for i3wm",
@@ -29,10 +31,17 @@ fn print_usage() {
 }
 
 fn process_request(args: Vec<String>) {
-    let MAX_HORIZONTAL_WORKSPACES = 10;
-    let mut i3: I4<i3ipc::I3Connection> = I4::connect(None, MAX_HORIZONTAL_WORKSPACES);
-    let i3root = i3.get_root(MAX_HORIZONTAL_WORKSPACES); //Root::new(MAX_HORIZONTAL_WORKSPACES);
+    let i3: I4<i3ipc::I3Connection> = I4::connect(None, MAX_HORIZONTAL_WORKSPACES);
 
+    process_request_inner(i3, args, std::io::stdout());
+}
+
+fn process_request_inner<W: std::io::Write, I: i4::I3ConnectionTrait>(
+    mut i3: I4<I>,
+    args: Vec<String>,
+    mut out: W,
+) {
+    let i3root = i3.get_root();
     match args[1].as_str() {
         "get" => {
             if args.len() < 3 {
@@ -41,7 +50,7 @@ fn process_request(args: Vec<String>) {
             }
             match args[2].as_str() {
                 "state" => {
-                    println!("{}", i3.get_state());
+                    writeln!(out, "{}", i3.get_state()).expect("Failed to write state to output");
                 }
                 _ => {
                     println!("Error: Unknown argument for get command");
@@ -381,11 +390,23 @@ fn main() {
 #[cfg(test)]
 mod tests {
     pub mod mock_i3ipc;
+
+    use std::char::MAX;
+
     use super::*;
+    use mock_i3ipc::MockI3Connection;
 
     #[test]
     fn get_state_request_prints_to_stdout() {
+        let i3: I4<MockI3Connection> =
+            I4::connect(Some("src/tests/scenarios/basic".to_string()), 10);
+        let mut output = Vec::new();
+        let expected_str = "{\"output\":\"DP-1-0\", \"workspace\":{\"vertical\":\"0\", \"horizontal\":\"4\", \"number\":\"4\"}, \"window\":\"file - Project - Workspace - Code Editor\"}\n";
+
         let args = vec!["i4".to_string(), "get".to_string(), "state".to_string()];
-        process_request(args);
+        process_request_inner(i3, args, &mut output);
+
+        let output_str = String::from_utf8(output).expect("Failed to convert output to string");
+        assert!(output_str.eq(expected_str));
     }
 }

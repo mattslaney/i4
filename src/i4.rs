@@ -155,7 +155,7 @@ impl<C: I3ConnectionTrait> I4<C> {
         }
     }
 
-    pub fn get_root(&mut self, size: i32) -> Root {
+    pub fn get_root(&mut self) -> Root {
         let outputs = self
             .connection
             .get_outputs()
@@ -165,7 +165,7 @@ impl<C: I3ConnectionTrait> I4<C> {
             .get_workspaces()
             .expect("Failed to get workspaces");
         let node = self.connection.get_tree().expect("Failed to get i3 tree");
-        Root::new(outputs, workspaces, node, size)
+        Root::new(outputs, workspaces, node, self.size)
     }
 
     //https://i3wm.org/docs/userguide.html#list_of_commands
@@ -610,7 +610,7 @@ mod tests {
     fn get_active_outputs_returns_all_active_outputs() {
         let mut i4: I4<MockI3Connection> =
             I4::connect(Some("src/tests/scenarios/basic".to_string()), 10);
-        let root_node = i4.get_root(10);
+        let root_node = i4.get_root();
 
         let active_outputs: Vec<Output> = root_node.get_active_outputs();
         assert_eq!(active_outputs.len(), 2);
