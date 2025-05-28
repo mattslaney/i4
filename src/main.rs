@@ -33,10 +33,10 @@ fn print_usage() {
 fn process_request(args: Vec<String>) {
     let i3: I4<i3ipc::I3Connection> = I4::connect(None, MAX_HORIZONTAL_WORKSPACES);
 
-    process_request_inner(i3, args, std::io::stdout());
+    action_request(i3, args, std::io::stdout());
 }
 
-fn process_request_inner<W: std::io::Write, I: i4::I3ConnectionTrait>(
+fn action_request<W: std::io::Write, I: i4::I3ConnectionTrait>(
     mut i3: I4<I>,
     args: Vec<String>,
     mut out: W,
@@ -349,49 +349,46 @@ fn process_request_inner<W: std::io::Write, I: i4::I3ConnectionTrait>(
 
 fn main() {
     let mut args = std::env::args().collect::<Vec<_>>();
-    let mut debug_mode = false;
     let mut logfile: Option<String> = None;
 
-    if args.len() < 2 || (args.len() == 2 && (args[1] == "-h" || args[1] == "--help")) {
+    if args.contains(&"-h".to_string()) || args.contains(&"--help".to_string()) {
         print_usage();
         return;
     }
 
-    if args[1] == "-v" || args[1] == "--version" {
+    if args.contains(&"-v".to_string()) || args.contains(&"--version".to_string()) {
         println!("i4 version 0.1.0");
         return;
     }
 
-    if args[1] == "-d" || args[1] == "--debug" {
-        args.remove(1);
-        debug_mode = true;
-        println!("Enter arguments for i4:");
-        let mut input: String = "".to_string();
-        std::io::stdin()
-            .read_line(&mut input)
-            .expect("Failed to read line");
-        args.extend(input.trim().split_whitespace().map(String::from));
-        println!("Debugging with arguments: {:?}", args);
+    if args.contains(&"-d".to_string()) || args.contains(&"--debug".to_string()) {
+        if let Some(index) = args.iter().position(|x| x == "-d" || x == "--debug") {
+            args.remove(index);
+            println!("Enter arguments for i4:");
+            let mut input: String = "".to_string();
+            std::io::stdin()
+                .read_line(&mut input)
+                .expect("Failed to read line");
+            args.extend(input.trim().split_whitespace().map(String::from));
+            println!("Debugging with arguments: {:?}", args);
+        }
     }
 
-    // let current_executable = std::env::current_exe().unwrap();
-    // let executable_path = current_executable.parent().unwrap();
-    // let executable_path_str = executable_path.to_str().unwrap();
-    // if executable_path_str == "/usr/local/bin" {
-    //     logfile = Some("/var/log/i4.log".to_string());
-    // } else {
-    //     logfile = Some(format!("{}/i4.log", executable_path_str));
-    // }
-    // let logger = Logger::new(logfile);
-    // logfile = Some("/var/log/i4.log".to_string());
+    if args.contains(&"-l".to_string()) || args.contains(&"--logfile".to_string()) {
+        if let Some(index) = args.iter().position(|x| x == "-l" || x == "--logfile") {
+            let current_executable = std::env::current_exe().unwrap();
+            let executable_path = current_executable.parent().unwrap();
+            let executable_path_str = executable_path.to_str().unwrap();
+            logfile = Some(format!("{}/i4.log", executable_path_str));
+        }
+    }
+
     process_request(args);
 }
 
 #[cfg(test)]
 mod tests {
     pub mod mock_i3ipc;
-
-    use std::char::MAX;
 
     use super::*;
     use mock_i3ipc::MockI3Connection;
@@ -404,7 +401,7 @@ mod tests {
         let expected_str = "{\"output\":\"DP-1-0\", \"workspace\":{\"vertical\":\"0\", \"horizontal\":\"4\", \"number\":\"4\"}, \"window\":\"file - Project - Workspace - Code Editor\"}\n";
 
         let args = vec!["i4".to_string(), "get".to_string(), "state".to_string()];
-        process_request_inner(i3, args, &mut output);
+        action_request(i3, args, &mut output);
 
         let output_str = String::from_utf8(output).expect("Failed to convert output to string");
         assert!(output_str.eq(expected_str));
