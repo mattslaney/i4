@@ -14,7 +14,7 @@ install:
 coverage:
 	echo "${LLVM_PROFDATA}"
 	rm -f *.profraw *.profdata *.log
-	RUSTFLAGS="-C instrument-coverage" cargo test --tests 2> test_output.log
+	RUSTFLAGS="-C instrument-coverage" cargo test --tests 2> tmp/test_output.log
 #	RUSTFLAGS="-C instrument-coverage" cargo test --tests | tee test_output.log >&2
 #	RUSTFLAGS="-C instrument-coverage" cargo test --tests | tee test_output.log 2>&1
 #	OBJECT_NAME = $(shell grep -o "target/debug/deps/i4-[a-z0-9]*" test_output.log | head -n 1)

@@ -83,6 +83,7 @@ impl Direction {
     }
 }
 
+#[derive(Debug)]
 pub struct Root {
     outputs: I3Outputs,
     workspaces: I3Workspaces,
@@ -205,16 +206,23 @@ impl<C: I3ConnectionTrait> I4<C> {
         let output = self.i3root.get_focused_output().unwrap();
         let workspace = output.get_focused_workspace().unwrap();
         let workspace_number = workspace.data.name.parse::<i32>().unwrap();
+        let sibling_workspaces: String = output
+            .get_horizontal_workspaces(&workspace)
+            .iter()
+            .map(|ws| ws.data.name.clone())
+            .collect::<Vec<String>>()
+            .join(",");
         let vertical_space = workspace_number / self.size;
         let horizontal_space = workspace_number % self.size;
         match workspace.get_focused_window() {
             Some(window) => {
                 format!(
-                    "{{\"output\":\"{}\", \"workspace\":{{\"vertical\":\"{}\", \"horizontal\":\"{}\", \"number\":\"{}\"}}, \"window\":\"{}\"}}",
+                    "{{\"output\":\"{}\", \"workspace\":{{\"vertical\":\"{}\", \"horizontal\":\"{}\", \"number\":\"{}\", \"siblings\":[{}]}}, \"window\":\"{}\"}}",
                     output.data.name,
                     vertical_space,
                     horizontal_space,
                     workspace.data.name,
+                    sibling_workspaces,
                     window.node.name.unwrap_or("".to_string())
                 )
             }
@@ -349,6 +357,7 @@ impl Root {
     }
 }
 
+#[derive(Debug)]
 pub struct Output<'a> {
     pub data: &'a I3Output,
     pub node: I3Node,
@@ -377,6 +386,23 @@ impl<'a> Output<'a> {
 
     fn get_workspaces(&self) -> Vec<Workspace> {
         self.workspaces.clone()
+    }
+
+    fn get_horizontal_workspaces(&self, workspace: &Workspace) -> Vec<Workspace> {
+        let mut horizontal_workspaces = Vec::new();
+        let workspace_name = workspace
+            .data
+            .name
+            .parse::<i32>()
+            .expect("expected workspace name to be an integer");
+        for ws in self.workspaces.iter() {
+            if let Ok(name) = ws.data.name.parse::<i32>() {
+                if name / self.size == workspace_name / self.size {
+                    horizontal_workspaces.push(ws.clone());
+                }
+            }
+        }
+        horizontal_workspaces
     }
 
     pub fn get_previous_workspace(&self) -> Option<Workspace> {
@@ -451,7 +477,7 @@ impl<'a> Output<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Workspace<'a> {
     pub data: &'a I3Workspace,
     pub node: &'a I3Node,

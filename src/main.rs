@@ -252,7 +252,7 @@ fn action_request<W: std::io::Write, I: i4::I3ConnectionTrait>(
                                     let new_name = format!(
                                         "{}",
                                         workspace.data.name.parse::<i32>().unwrap()
-                                            + MAX_HORIZONTAL_WORKSPACES
+                                            - MAX_HORIZONTAL_WORKSPACES
                                     );
                                     i3.move_window_to_workspace(
                                         match output.get_adjacent_workspace(Down) {
@@ -376,6 +376,7 @@ fn main() {
 
     if args.contains(&"-l".to_string()) || args.contains(&"--logfile".to_string()) {
         if let Some(index) = args.iter().position(|x| x == "-l" || x == "--logfile") {
+            args.remove(index);
             let current_executable = std::env::current_exe().unwrap();
             let executable_path = current_executable.parent().unwrap();
             let executable_path_str = executable_path.to_str().unwrap();
